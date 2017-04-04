@@ -1,4 +1,4 @@
-//jshint esnext:true
+//jshint esversion:6
 
 const fs = require('fs');
 const path = require('path');

@@ -1,14 +1,11 @@
 //jshint esnext:true
 
-const db = require('./db.js');
-const utils = require('./utils.js');
+const db = require('./db');
+const utils = require('./utils');
 const path = require('path');
 const fs = require('fs');
 const mm = require('musicmetadata');
-
-let artist = 'Aca Seca Trio';
-let artist_path = path.join('/media/datos/Musica/Discos/');
-
+var evt = require('./event').evt;
 
 function processArtist(metadata) {
   return new Promise(function(resolve, reject) {
@@ -24,7 +21,7 @@ function processArtist(metadata) {
     let song_data = {
       name: metadata.title,
       track: metadata.track.no,
-      path: metadata.file
+      uri: metadata.file
     };
 
     db.Artist.findOrCreate({ where: artist_data })
@@ -53,6 +50,7 @@ function processAlbum(artist, album_data) {
           .then(a => {
             artist.addAlbum(a)
               .then(r => {
+                evt.emit('new-album', album_data.name);
                 resolve(a);
               });
           });
@@ -71,10 +69,13 @@ function processSong(album, song_data) {
       where: song_data
     }).then(songs => {
       if (songs.length === 0) {
+        let stats = fs.statSync(song_data.uri);
+        song_data.size = stats.size / 1000000.0;
         db.Song.build(song_data).save()
           .then(s => {
             album.addSong(s)
               .then(r => {
+                evt.emit('new-song', song_data.name);                
                 resolve(s);
               });
           });
@@ -104,16 +105,19 @@ function processFiles(gen){
 
 function* itFiles(array){
   for (var i = 0; i < array.length; i++) {
+    // console.log('Procesando archivo', array[i], '...');
     yield array[i];
   }
   yield null;
 }
 
-utils.getMp3s(artist_path)
-  .then(files => {
-      let gen = itFiles(files);
-      processFiles(gen);
-})
-.catch(error => {
-  console.log(error);
-});
+module.exports.scan = function(path) {
+  return utils.getMp3s(path)
+    .then(files => {
+        let gen = itFiles(files);
+        processFiles(gen);
+  })
+  .catch(error => {
+    console.log(error);
+  });
+};

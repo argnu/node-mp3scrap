@@ -1,85 +1,64 @@
-// jshint esnext:true
+// jshint esversion:6
 
 // const id3 = require('id3js');
-const express = require('express');
-const app = express();
-
 const path = require('path');
 const fs = require('fs');
-const mm = require('musicmetadata');
+const app = require('express')();
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
+const db = require('./db');
+const scraper = require('./scraper');
+var evt = require('./event').evt;
 
-const db = require('./db.js');
-const utils = require('./utils.js');
 
-db.init()
-  .then(r => {
-  // 
-  //   let artist = 'Aca Seca Trio';
-  //   let artist_path = path.join('/media/datos/Musica/Discos/', artist);
-  //
-  //   utils.getMp3s(artist_path)
-  //     .then(files => {
-  //       files.forEach(file => {
-  //         mm(fs.createReadStream(file), function (err, metadata) {
-  //           if (err) throw err;
-  //
-  //           let artist_data = {
-  //               name: metadata.artist[0]
-  //           };
-  //
-  //           let album_data = {
-  //             name: metadata.album,
-  //             year: metadata.year
-  //           };
-  //
-  //           let song_data = {
-  //             name: metadata.title,
-  //             track: metadata.track.no,
-  //             path: file
-  //           };
-  //
-  //           db.Artist.findOrCreate({ where: artist_data })
-  //             .then(art => {
-  //               db.Album.findOne({
-  //                 where: album_data,
-  //                 include: [{
-  //                     model: Artist
-  //                 }]
-  //               })
-  //                 .then(alb => {
-  //                   if (alb.length === 0 ) {
-  //                     return db.Album.build(album_data).save()
-  //                       .then(new_alb => {
-  //                         art.addAlbum(new_alb);
-  //                         return Promise.resolve(new_alb);
-  //                       })
-  //                   }
-  //                   else Promise.resolve(alb);
-  //                 })
-  //                 .then(alb => {
-  //                   Song.build(data).save()
-  //                     .then(new_song => alb.addSong(new_song));
-  //                 });
-  //             });
-  //       });
-  //     })
-  //     .catch(error => {
-  //       console.log(error);
-  //     });
-  // });
+let scan_path = path.join('/home/mweingart/Música/Arbolito');
+
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+
+app.get('/artists', function(req, res) {
+  db.Artist.findAll({
+    include: [{
+        model: db.Album,
+        as: 'albums',
+        include: [{
+          model: db.Song,
+          as: 'songs'
+        }]
+    }]
+  })
+  .then(arts => {
+      res.json(arts);
+  })
+  .catch(error => {
+    res.send(error);
+  });
 });
 
 
-// db.getSongs()
-//   .then(songs => {
-//     console.log(songs);
-//   });
 
+app.get('/scan', function(req, res) {
+  scraper.scan(scan_path)
+    .then(r => {
+        res.send('lesto!');
+    })
+    .catch(error => {
+      res.send(error);
+    });
+});
 
-// app.get('/', function(req, res) {
-//   res.send('Holaaa!');
-// });
-//
-// app.listen(3000, function() {
-//   console.log('Ejecutando servidor en puerto 3000');
-// });
+server.listen(3000, function() {
+  console.log('Ejecutando servidor en puerto 3000');
+});
+
+io.on('connection', function (socket) {
+  evt.on('new-song', function (song) {
+    socket.emit('new-song', {name: song});
+  });
+  evt.on('new-album', function (album) {
+    socket.emit('new-album', {name: album});
+  });
+});
