@@ -7,6 +7,8 @@ const io = require('socket.io')(server);
 const rest_router = require('./rest/router');
 const scanner_evt = require('./scraper').scanner_evt;
 
+const db = require('./db/db');
+
 
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -15,6 +17,17 @@ app.use(function(req, res, next) {
 });
 
 app.use('/rest', rest_router);
+
+app.get('/files/songs/:id', function(req, res) {
+  db.Song.findOne({
+      where: {
+        id: req.params.id
+      }
+    })
+    .then(song => {
+      res.sendFile(song.uri);
+    });
+});
 
 server.listen(3000, function() {
   console.log('Ejecutando servidor en puerto 3000');
