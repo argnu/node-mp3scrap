@@ -23,7 +23,8 @@ Artist.hasMany(Album);
 Album.belongsTo(Artist);
 Album.hasMany(Song);
 Song.belongsTo(Album);
-Song.hasMany(Genre);
+Song.belongsToMany(Genre, {through: 'SongGenre'});
+Genre.belongsToMany(Song, {through: 'SongGenre'});
 
 module.exports.Artist = Artist;
 module.exports.Album = Album;

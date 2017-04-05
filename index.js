@@ -1,17 +1,12 @@
 // jshint esversion:6
 
-// const id3 = require('id3js');
-const path = require('path');
 const fs = require('fs');
 const app = require('express')();
 const server = require('http').Server(app);
 const io = require('socket.io')(server);
-const db = require('./db');
-const scraper = require('./scraper');
-var evt = require('./event').evt;
+const rest_router = require('./rest/router');
+const scanner_evt = require('./scraper').scanner_evt;
 
-
-let scan_path = path.join('/home/mweingart/Música/Arbolito');
 
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -19,46 +14,25 @@ app.use(function(req, res, next) {
   next();
 });
 
-app.get('/artists', function(req, res) {
-  db.Artist.findAll({
-    include: [{
-        model: db.Album,
-        as: 'albums',
-        include: [{
-          model: db.Song,
-          as: 'songs'
-        }]
-    }]
-  })
-  .then(arts => {
-      res.json(arts);
-  })
-  .catch(error => {
-    res.send(error);
-  });
-});
-
-
-
-app.get('/scan', function(req, res) {
-  scraper.scan(scan_path)
-    .then(r => {
-        res.send('lesto!');
-    })
-    .catch(error => {
-      res.send(error);
-    });
-});
+app.use('/rest', rest_router);
 
 server.listen(3000, function() {
   console.log('Ejecutando servidor en puerto 3000');
 });
 
 io.on('connection', function (socket) {
-  evt.on('new-song', function (song) {
-    socket.emit('new-song', {name: song});
-  });
-  evt.on('new-album', function (album) {
-    socket.emit('new-album', {name: album});
-  });
+  if (scanner_evt) {
+    scanner_evt.on('new-song', function (song) {
+      socket.emit('new-song', {name: song});
+    });
+    scanner_evt.on('new-album', function (album) {
+      socket.emit('new-album', {name: album});
+    });
+    scanner_evt.on('new-artist', function (artist) {
+      socket.emit('new-artist', {name: artist});
+    });
+    scanner_evt.on('new-genre', function (genre) {
+      socket.emit('new-genre', {name: genre});
+    });
+  }
 });

@@ -5,10 +5,14 @@ const utils = require('./utils');
 const path = require('path');
 const fs = require('fs');
 const mm = require('musicmetadata');
-var evt = require('./event').evt;
+const EventEmitter = require('events').EventEmitter;
 
-function processArtist(metadata) {
-  return new Promise(function(resolve, reject) {
+var evt_emitter = new EventEmitter();
+
+module.exports.scanner_evt = evt_emitter;
+
+
+function processFile(metadata) {
     let artist_data = {
         name: metadata.artist[0]
     };
@@ -24,19 +28,26 @@ function processArtist(metadata) {
       uri: metadata.file
     };
 
-    db.Artist.findOrCreate({ where: artist_data })
-      .then(art => {
-        let artist = art[0];
-        processAlbum(artist, album_data)
-          .then(a => {
-            processSong(a, song_data)
-              .then(s => {
-                resolve(s);
-              });
-          });
-      });
+    return processArtist(artist_data)
+            .then(artist => processAlbum(artist, album_data))
+            .then(albm => processSong(albm, song_data))
+            .then(song => processGenre(song, metadata.genre[0]));
+}
 
-  });
+function processArtist(artist_data) {
+    return new Promise(function(resolve, reject) {
+      db.Artist.findAll({ where: artist_data })
+        .then(art => {
+            if (art.length === 0) {
+              db.Artist.build(artist_data).save()
+                .then(a => {
+                  evt_emitter.emit('new-artist', artist_data.name);
+                  resolve(a);
+                });
+            }
+            else resolve(art[0]);
+        });
+    });
 }
 
 //agrega el album al artista si no existía y lo devuelve
@@ -50,7 +61,7 @@ function processAlbum(artist, album_data) {
           .then(a => {
             artist.addAlbum(a)
               .then(r => {
-                evt.emit('new-album', album_data.name);
+                evt_emitter.emit('new-album', album_data.name);
                 resolve(a);
               });
           });
@@ -75,7 +86,7 @@ function processSong(album, song_data) {
           .then(s => {
             album.addSong(s)
               .then(r => {
-                evt.emit('new-song', song_data.name);                
+                evt_emitter.emit('new-song', song_data.name);
                 resolve(s);
               });
           });
@@ -87,14 +98,47 @@ function processSong(album, song_data) {
   });
 }
 
+function processGenre(song, genre_string){
+  if (genre_string) {
+    let genres = genre_string.split(/[;\/]/);
+    let promises = [];
+    genres = utils.delDuplicates(genres);
+    genres.forEach(genre_name => {
+      promises.push(findOrAddGenre(genre_name));
+    });
+    return Promise.all(promises)
+      .then(genres => song.addGenres(genres))
+      .catch(err => console.log(err));
+  }
+}
+
+function findOrAddGenre(genre_name) {
+  return new Promise(function(resolve, reject) {
+    db.Genre.findAll({ where: {name: genre_name} })
+      .then(genre => {
+        if (genre.length === 0) {
+          db.Genre.build({name:genre_name}).save()
+            .then(g => {
+              evt_emitter.emit('new-genre', genre_name);
+              resolve(g);
+            });
+        }
+        else resolve(genre[0]);
+      });
+  });
+}
+
 function processFiles(gen){
   let val = gen.next().value;
-  if (val === null) return;
+  if (val === null) {
+    evt_emitter.emit('end');
+    return;
+  }
   else {
     mm(fs.createReadStream(val), function (err, metadata) {
       if (err) throw err;
       metadata.file = val;
-      processArtist(metadata)
+      processFile(metadata)
         .then(a => {
           processFiles(gen);
         });
@@ -112,12 +156,14 @@ function* itFiles(array){
 }
 
 module.exports.scan = function(path) {
-  return utils.getMp3s(path)
+  utils.getMp3s(path)
     .then(files => {
         let gen = itFiles(files);
         processFiles(gen);
-  })
-  .catch(error => {
-    console.log(error);
-  });
+    })
+    .catch(error => {
+      console.log(error);
+    });
+
+  return;
 };

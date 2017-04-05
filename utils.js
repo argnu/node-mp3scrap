@@ -34,14 +34,6 @@ function walk(dir) {
 
 module.exports.getMp3s = walk;
 
-/*
- * serial executes Promises sequentially.
- * @param {funcs} An array of funcs that return promises.
- * @example
- * const urls = ['/url1', '/url2', '/url3']
- * serial(urls.map(url => () => $.ajax(url)))
- *     .then(console.log.bind(console))
- */
-module.exports.serial = funcs =>
-    funcs.reduce((promise, func) =>
-        promise.then(result => func().then(Array.prototype.concat.bind(result))), Promise.resolve([]));
+module.exports.delDuplicates = function(array) {
+  return Array.from(new Set(array));
+};
