@@ -1,6 +1,7 @@
 // jshint esversion:6
 
 const fs = require('fs');
+const path = require('path');
 const app = require('express')();
 const server = require('http').Server(app);
 const io = require('socket.io')(server);
@@ -27,6 +28,10 @@ app.get('/files/songs/:id', function(req, res) {
     .then(song => {
       res.sendFile(song.uri);
     });
+});
+
+app.get('/files/pics/albums/:id', function(req, res) {
+  res.sendFile(__dirname + '/files/pics/2.jpg');
 });
 
 server.listen(3000, function() {

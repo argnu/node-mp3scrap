@@ -37,3 +37,7 @@ module.exports.getMp3s = walk;
 module.exports.delDuplicates = function(array) {
   return Array.from(new Set(array));
 };
+
+module.exports.clone = function(obj) {
+  return JSON.parse(JSON.stringify(obj));
+};

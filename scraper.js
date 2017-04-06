@@ -13,13 +13,14 @@ module.exports.scanner_evt = evt_emitter;
 
 
 function processFile(metadata) {
+
     let artist_data = {
         name: metadata.artist[0]
     };
 
     let album_data = {
       name: metadata.album,
-      year: metadata.year
+      year: metadata.year,
     };
 
     let song_data = {

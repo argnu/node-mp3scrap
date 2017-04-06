@@ -8,7 +8,8 @@ module.exports = function (sequelize, DataTypes) {
     name: { type: Sequelize.STRING, field: 'name' },
     track: { type: Sequelize.INTEGER(2), field: 'track' },
     uri: { type: Sequelize.STRING, field: 'uri' },
-    size: { type: Sequelize.FLOAT, field: 'size' }
+    size: { type: Sequelize.FLOAT, field: 'size' },
+    duration: { type: Sequelize.FLOAT, field: 'duration'}
   }, {
     freezeTableName: true // Model tableName will be the same as the model name
   });
