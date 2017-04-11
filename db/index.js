@@ -18,6 +18,7 @@ var Artist = sequelize.import(__dirname + "/models/artist");
 var Album = sequelize.import(__dirname + "/models/album");
 var Song = sequelize.import(__dirname + "/models/song");
 var Genre = sequelize.import(__dirname + "/models/genre");
+var User = sequelize.import(__dirname + "/models/user");
 
 Artist.hasMany(Album);
 Album.belongsTo(Artist);
@@ -30,6 +31,7 @@ module.exports.Artist = Artist;
 module.exports.Album = Album;
 module.exports.Song = Song;
 module.exports.Genre = Genre;
+module.exports.User = User;
 
 module.exports.init = function() {
   return sequelize.sync({ force: true });

@@ -51,7 +51,7 @@ router.get('/artists', function(req, res) {
   });
 });
 
-router.get('/artist/:id', function(req, res) {
+router.get('/artists/:id', function(req, res) {
   db.Artist.findOne({
     where: { id: req.params.id },
     include: [{
@@ -69,6 +69,22 @@ router.get('/artist/:id', function(req, res) {
   .catch(error => {
     res.send(error);
   });
+});
+
+router.post('/users', function(req, res) {
+
+});
+
+router.post('/users/authenticate', function(req, res) {
+  db.User.findOne({ where: { email: req.body.email } })
+    .then(user => {
+      if (user.authenticate(req.body.password)) {
+        res.json({ valid: true, data: user.dataValues});
+      }
+      else {
+        res.json({ valid: false });
+      }
+    });
 });
 
 module.exports = router;

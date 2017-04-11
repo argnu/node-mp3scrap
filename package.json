@@ -15,6 +15,7 @@
   "author": "Martín Weingart",
   "license": "GPL-3.0",
   "dependencies": {
+    "bcrypt": "^1.0.2",
     "body-parser": "^1.17.1",
     "express": "^4.15.2",
     "musicmetadata": "^2.0.5",

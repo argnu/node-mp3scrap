@@ -11,6 +11,6 @@ module.exports = function (sequelize, DataTypes) {
     size: { type: Sequelize.FLOAT, field: 'size' },
     duration: { type: Sequelize.FLOAT, field: 'duration'}
   }, {
-    freezeTableName: true // Model tableName will be the same as the model name
+    freezeTableName: true
   });
 };

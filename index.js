@@ -8,7 +8,7 @@ const io = require('socket.io')(server);
 const rest_router = require('./rest/router');
 const scanner_evt = require('./scraper').scanner_evt;
 
-const db = require('./db/db');
+const db = require('./db');
 
 
 app.use(function(req, res, next) {
