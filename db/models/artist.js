@@ -1,5 +1,3 @@
-// jshint esversion:6
-
 const Sequelize = require('sequelize');
 
 module.exports = function (sequelize, DataTypes) {
