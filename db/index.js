@@ -21,10 +21,14 @@ var Genre = sequelize.import(__dirname + "/models/genre");
 var User = sequelize.import(__dirname + "/models/user");
 var Folder = sequelize.import(__dirname + "/models/folder");
 
-Artist.hasMany(Album);
+Artist.hasMany(Album, { onDelete: 'CASCADE' });
 Album.belongsTo(Artist);
-Album.hasMany(Song);
+Album.hasMany(Song, { onDelete: 'CASCADE' });
 Song.belongsTo(Album);
+Folder.hasMany(Song, { onDelete: 'CASCADE' });
+Song.belongsTo(Folder);
+Song.belongsTo(Artist);
+Artist.hasMany(Song);
 Song.belongsToMany(Genre, {through: 'SongGenre'});
 Genre.belongsToMany(Song, {through: 'SongGenre'});
 

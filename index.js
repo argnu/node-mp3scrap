@@ -14,6 +14,7 @@ const db = require('./db');
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, HEAD");
   next();
 });
 
@@ -37,7 +38,7 @@ app.get('/files/pics/albums/:id', function(req, res) {
       }
     })
     .then(album => {
-      res.sendFile(album.pic);
+      if (album) res.sendFile(album.pic);
     });
 });
 

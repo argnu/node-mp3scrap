@@ -1,5 +1,3 @@
-//jshint esnext:true
-
 const slugify = require('slugify');
 const db = require('./db');
 const utils = require('./utils');
@@ -16,57 +14,40 @@ module.exports.scanner_evt = evt_emitter;
 
 function downloadPicLastFM(artist, album) {
   return new Promise(function(resolve, reject) {
-    let url = `https://www.last.fm/music/${artist.name}/${album.name}`;
-    request(url, function(error, response, html) {
-      if (error) reject(error);
-      let $ = cheerio.load(html);
-      let a_imagen = $('li.secondary-nav-item--images a');
-      let link_imagen = `https://www.last.fm${a_imagen.attr('href')}`;
-
-      request(link_imagen, function(error, response, html) {
+    try {
+      console.log(`${album.name}: Fetching album pic...`);
+      let url = `https://www.last.fm/music/${artist.name}/${album.name}`;
+      request(url, function(error, response, html) {
         if (error) reject(error);
-        if (html) {
-          let $ = cheerio.load(html);
-          let url_imagen = $('a.gallery-image img').attr('src');
-          if (url_imagen) {
-            request(url_imagen)
-            .on('error', function(err) {
-              reject(error);
-            })
-            .pipe(fs.createWriteStream(`${__dirname}/files/album-pic/${album.name}.jpg`));
-            resolve(`${__dirname}/files/album-pic/${album.name}.jpg`);
+        let $ = cheerio.load(html);
+        let a_imagen = $('li.secondary-nav-item--images a');
+        let link_imagen = `https://www.last.fm${a_imagen.attr('href')}`;
+
+        request(link_imagen, function(error, response, html) {
+          if (error) reject(error);
+          if (html) {
+            let $ = cheerio.load(html);
+            let url_imagen = $('a.gallery-image img').attr('src');
+            if (url_imagen) {
+              request(url_imagen)
+              .on('error', function(err) {
+                reject(error);
+              })
+              .pipe(fs.createWriteStream(`${__dirname}/files/album-pic/${album.name}.jpg`));
+              resolve(`${__dirname}/files/album-pic/${album.name}.jpg`);
+            }
           }
-        }
-        reject('No hay imagen para dicho album');
+          reject('No hay imagen para dicho album');
+        });
       });
-    });
-  });
-}
-
-
-function processPic(album, pic_data) {
-  return new Promise(function(resolve, reject) {
-    if (pic_data) {
-      fs.writeFile(`${__dirname}/files/album-pic/${pic_data.name}.${pic_data.format}`, pic_data.data, function(err) {
-          if(err) reject(err);
-          album.pic = `/files/album-pic/${pic_data.name}.${pic_data.format}`;
-          album.save()
-            .then(a => resolve(a))
-            .catch(err => reject(err));
-      });
+    } catch (e) {
+      reject(e);
     }
-    else resolve(album);
   });
 }
 
-function processFile(metadata) {
-  let pic_data;
 
-  if (metadata.picture[0]) {
-    pic_data = metadata.picture[0];
-    pic_data.name = slugify(`${metadata.artist[0]}-${metadata.album}`);
-  }
-
+function processFile(metadata, folder) {
   let artist_data = {
       name: metadata.artist[0]
   };
@@ -74,7 +55,7 @@ function processFile(metadata) {
   let album_data = {
     name: metadata.album,
     year: metadata.year,
-    pic:  pic_data ? pic_data.name : ''
+    pic:  ''
   };
 
   let song_data = {
@@ -84,9 +65,8 @@ function processFile(metadata) {
   };
 
   return processArtist(artist_data)
-          .then(artist => processAlbum(artist, album_data))
-          // .then(album => processPic(album, pic_data))
-          .then(alb => processSong(alb, song_data))
+          .then(artist => processAlbum(artist, album_data, folder.search_art))
+          .then(alb => processSong(alb, song_data, folder))
           .then(song => processGenre(song, metadata.genre[0]));
 }
 
@@ -122,7 +102,7 @@ function addAlbum(artist, data) {
 }
 
 //agrega el album al artista si no existía y lo devuelve
-function processAlbum(artist, album_data) {
+function processAlbum(artist, album_data, art) {
   return new Promise((resolve, reject) => {
     artist.getAlbums({
       where: {
@@ -130,21 +110,29 @@ function processAlbum(artist, album_data) {
       }
     }).then(albs => {
       if (albs.length === 0) {
-        // data.pic = `/files/album-pic/${pic_data.name}.${pic_data.format}`;
-        downloadPicLastFM(artist, album_data)
-          .then(r => {
-            let data = album_data;
-            data.pic = r;
-            return addAlbum(artist, data);
-          })
-          .catch(e => {
-            console.log('Error descargando pic del album', e);
-            return addAlbum(artist, album_data);
-          })
-          .then(a => {
-            evt_emitter.emit('new-album', album_data.name);
-            resolve(a);
-          });
+        if (art) {
+          downloadPicLastFM(artist, album_data)
+            .then(r => {
+              let data = album_data;
+              data.pic = r;
+              return addAlbum(artist, data);
+            })
+            .catch(e => {
+              console.log('Error descargando pic del album', e);
+              return addAlbum(artist, album_data);
+            })
+            .then(a => {
+              evt_emitter.emit('new-album', album_data.name);
+              resolve(a);
+            });
+        }
+        else {
+          addAlbum(artist, album_data)
+            .then(a => {
+              evt_emitter.emit('new-album', album_data.name);
+              resolve(a);
+            });
+        }
       }
       else {
         resolve(albs[0]);
@@ -154,7 +142,7 @@ function processAlbum(artist, album_data) {
 }
 
 //agrega la canción al albúm si no existía y la devuelve
-function processSong(album, song_data) {
+function processSong(album, song_data, folder) {
   return new Promise((resolve, reject) => {
     album.getSongs({
       where: song_data
@@ -164,11 +152,12 @@ function processSong(album, song_data) {
         song_data.size = stats.size / 1000000.0;
         db.Song.build(song_data).save()
           .then(s => {
-            album.addSong(s)
-              .then(r => {
-                evt_emitter.emit('new-song', song_data.name);
-                resolve(s);
-              });
+            Promise.all([ album.addSong(s), folder.addSong(s) ])
+                    .then(r => {
+                      evt_emitter.emit('new-song', song_data.name);
+                      resolve(s);
+                    })
+                    .catch(e => reject(e));
           });
       }
       else {
@@ -208,19 +197,18 @@ function findOrAddGenre(genre_name) {
   });
 }
 
-function processFiles(gen){
+function processFiles(gen, folder) {
   let val = gen.next().value;
   if (val === null) {
-    evt_emitter.emit('end');
     return;
   }
   else {
     mm(fs.createReadStream(val), function (err, metadata) {
       if (err) throw err;
       metadata.file = val;
-      processFile(metadata)
+      processFile(metadata, folder)
         .then(a => {
-          processFiles(gen);
+          processFiles(gen, folder);
         });
 
     });
@@ -229,17 +217,17 @@ function processFiles(gen){
 
 function* itFiles(array){
   for (var i = 0; i < array.length; i++) {
-    // console.log('Procesando archivo', array[i], '...');
     yield array[i];
   }
   yield null;
 }
 
-module.exports.scan = function(path) {
-  utils.getMp3s(path)
+module.exports.scan = function(folder) {
+  utils.getMp3s(folder.path)
     .then(files => {
         let gen = itFiles(files);
-        processFiles(gen);
+        processFiles(gen, folder);
+        evt_emitter.emit('end');
     })
     .catch(error => {
       console.log(error);

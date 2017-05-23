@@ -7,3 +7,6 @@ https://www.last.fm/music/{{ artista }}/{{ album }}
 
 enlace imagen = li.secondary-nav-item--images > a[href]
 imagen = a.gallery-image[0] > img[src]
+
+
+PARA QUE FUNCIONEN LAS FOREIGN KEYS EN SQLITE3 HAY Q HABILITAR "PRAGMA"
