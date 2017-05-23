@@ -13,6 +13,7 @@ router.use(body_parser.json());
 
 router.post('/scan', function(req, res) {
   let scan_path = req.body.path;
+  console.log(scan_path);
   scraper.scan(scan_path);
 
   scanner_evt.on('end', () =>{
@@ -72,14 +73,28 @@ router.get('/artists/:id', function(req, res) {
   });
 });
 
-router.post('/users', function(req, res) {
+router.get('/folders', function(req, res) {
+  db.Folder.findAll()
+    .then(folders => res.json(folders))
+    .catch(e => res.json({error: e}));
+});
 
+router.post('/folders', function(req, res) {
+  let folder_data = {
+    path: req.body.path,
+    scanned: false
+  };
+
+  db.Folder.build(folder_data).save()
+    .then(a => {
+      res.json({msg: 'Folder added'});
+    });
 });
 
 router.post('/users/authenticate', function(req, res) {
   db.User.findOne({ where: { email: req.body.email } })
     .then(user => {
-      if (user.authenticate(req.body.password)) {
+      if (user && user.authenticate(req.body.pass)) {
         res.json({ valid: true, data: user.dataValues});
       }
       else {
