@@ -8,6 +8,7 @@ const db = require('../db');
 const scraper = require('../scraper');
 const scanner_evt = scraper.scanner_evt;
 
+
 router.use(body_parser.json());
 
 router.post('/scan', function(req, res) {

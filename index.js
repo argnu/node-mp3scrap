@@ -31,7 +31,14 @@ app.get('/files/songs/:id', function(req, res) {
 });
 
 app.get('/files/pics/albums/:id', function(req, res) {
-  res.sendFile(__dirname + '/files/pics/2.jpg');
+  db.Album.findOne({
+      where: {
+        id: req.params.id
+      }
+    })
+    .then(album => {
+      res.sendFile(album.pic);
+    });
 });
 
 server.listen(3000, function() {
