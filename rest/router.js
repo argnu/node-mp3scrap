@@ -8,16 +8,23 @@ const db = require('../db');
 const scraper = require('../scraper');
 
 router.use(body_parser.json());
+router.use(function (req, res, next) {
+  let params = { where: {}};
+  for(let key in req.query) {
+    if (key === 'offset') params.offset = req.query.offset;
+    else if (key === 'limit') params.limit = req.query.limit;
+    else params.where[key] = req.query[key];
+  }
+  req.sql = params;
+  next();
+});
 
 router.get('/artists', function(req, res) {
   db.Artist.findAll({
+    order: [ ['name', 'ASC'] ],
     include: [{
         model: db.Album,
-        as: 'albums',
-        include: [{
-          model: db.Song,
-          as: 'songs'
-        }]
+        as: 'albums'
     }]
   })
   .then(arts => {
@@ -33,11 +40,7 @@ router.get('/artists/:id', function(req, res) {
     where: { id: req.params.id },
     include: [{
         model: db.Album,
-        as: 'albums',
-        include: [{
-          model: db.Song,
-          as: 'songs'
-        }]
+        as: 'albums'
     }]
   })
   .then(art => {
@@ -45,6 +48,42 @@ router.get('/artists/:id', function(req, res) {
   })
   .catch(error => {
     res.send(error);
+  });
+});
+
+router.get('/albums', function(req, res) {
+  req.sql.order = [
+    ['artistId', 'ASC'],
+    ['name', 'ASC']
+  ];
+  db.Album.findAll(req.sql)
+  .then(albums => { res.json(albums); })
+  .catch(error => {
+    res.status(500);
+    res.json({errorType: 'Parámetros de consulta incorrectos', error});
+  });
+});
+
+router.get('/songs', function(req, res) {
+  req.sql.order = [
+    [db.Artist, 'name', 'ASC'],
+    [db.Album, 'name', 'ASC'],
+    ['track', 'ASC']
+  ];
+  req.sql.include = [{
+    model: db.Album,
+    attributes: [ 'name' ],
+    as: 'album'
+  }, {
+    model: db.Artist,
+    attributes: [ 'name' ],
+    as: 'artist'
+  }];
+  db.Song.findAll(req.sql)
+  .then(songs => { res.json(songs); })
+  .catch(error => {
+    res.status(500);
+    res.json({errorType: 'Parámetros de consulta incorrectos', error});
   });
 });
 
@@ -65,6 +104,17 @@ router.post('/folders', function(req, res) {
     .then(a => {
       res.json({msg: 'Folder added', id: a.id });
     });
+});
+
+router.put('/folders/:id', function(req, res) {
+  db.Folder.findOne({ where: { id: req.params.id }})
+    .then(folder => {
+      folder.scanned = req.body.scanned;
+      folder.search_art = req.body.search_art;
+      folder.save()
+            .then(() => res.json({msg: 'Folder updated', id: folder.id}));
+    })
+    .catch(e => res.json({error: e}));
 });
 
 function checkAndDestroyArtist() {

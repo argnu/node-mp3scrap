@@ -31,7 +31,7 @@ app.get('/files/songs/:id', function(req, res) {
     });
 });
 
-app.get('/files/pics/albums/:id', function(req, res) {
+app.get('/files/album-art/:id', function(req, res) {
   db.Album.findOne({
       where: {
         id: req.params.id
@@ -46,23 +46,30 @@ app.get('/files/pics/albums/:id', function(req, res) {
     });
 });
 
-server.listen(3000, function() {
+app.get('/probando', function(req, res) {
+  app_events.db.emit('mostrar');
+  res.end();
+});
+
+server.listen(3000, 'localhost', function() {
   console.log('Ejecutando servidor en puerto 3000');
 });
 
+
 io.on('connection', function (socket) {
+
   if (app_events.db) {
-    app_events.db.on('new-song', function (song) {
-      socket.emit('new-song', {name: song});
-    });
+    // app_events.db.on('new-song', function (song) {
+    //   socket.emit('new-song', {name: song});
+    // });
     app_events.db.on('new-album', function (album) {
-      socket.emit('new-album', {name: album});
+      socket.emit('new-album', album);
     });
     app_events.db.on('new-artist', function (artist) {
-      socket.emit('new-artist', {name: artist});
+      socket.emit('new-artist', artist);
     });
-    app_events.db.on('new-genre', function (genre) {
-      socket.emit('new-genre', {name: genre});
-    });
+    // app_events.db.on('new-genre', function (genre) {
+    //   socket.emit('new-genre', {name: genre});
+    // });
   }
 });

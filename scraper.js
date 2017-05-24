@@ -30,6 +30,7 @@ function downloadArtLastFM(artist, album) {
                 reject(error);
               })
               .pipe(fs.createWriteStream(`${__dirname}/files/album-art/${album}.jpg`));
+              console.log('Done!');
               resolve(`${__dirname}/files/album-art/${album}.jpg`);
             }
           }
@@ -73,7 +74,7 @@ function processArtist(artist_data) {
             if (!artist) {
               db.Artist.build(artist_data).save()
                 .then(a => {
-                  app_events.db.emit('new-artist', artist_data.name);
+                  app_events.db.emit('new-artist', a);
                   resolve(a);
                 })
                 .catch(e => reject(e));
@@ -88,9 +89,9 @@ function addAlbum(artist, data) {
   return new Promise(function(resolve, reject) {
     db.Album.build(data).save()
       .then(a => {
-        artist.addAlbum(a)
+        a.setArtist(artist)
           .then(r => {
-            app_events.db.emit('new-album', { artist: artist.name, album: data.name});
+            app_events.db.emit('new-album', a);
             resolve(a);
           })
           .catch(e => reject(e));
@@ -156,12 +157,18 @@ function processSong(album, song_data, folder) {
               song_data.size = stats.size / 1000000.0;
               db.Song.build(song_data).save()
                 .then(s => {
-                  Promise.all([ album.addSong(s), folder.addSong(s) ])
-                          .then(r => {
-                            app_events.db.emit('new-song', song_data.name);
-                            resolve(s);
-                          })
-                          .catch(e => reject(e));
+                  album.getArtist()
+                       .then(artist => {
+
+                           Promise.all([ artist.addSong(s), album.addSong(s), folder.addSong(s) ])
+                                   .then(r => {
+                                     app_events.db.emit('new-song', song_data.name);
+                                     resolve(s);
+                                   })
+                                   .catch(e => reject(e));
+                       })
+                       .catch(e => reject(e));
+
                 })
                 .catch(e => reject(e));
             }
