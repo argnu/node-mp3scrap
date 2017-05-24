@@ -7,7 +7,7 @@ module.exports = function (sequelize, DataTypes) {
     id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true },
     name: { type: Sequelize.STRING, field: 'name' },
     year: { type: Sequelize.INTEGER(4), field: 'year' },
-    pic: { type: Sequelize.STRING, field: 'pic' }
+    art: { type: Sequelize.BOOLEAN, field: 'art' }
   }, {
     freezeTableName: true // Model tableName will be the same as the model name
   });

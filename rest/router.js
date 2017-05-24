@@ -6,7 +6,6 @@ const body_parser = require('body-parser');
 const router = express.Router();
 const db = require('../db');
 const scraper = require('../scraper');
-const scanner_evt = scraper.scanner_evt;
 
 router.use(body_parser.json());
 
@@ -92,42 +91,22 @@ router.delete('/folders/:id', function(req, res) {
     .catch(e => res.json({error: e}));
 });
 
+
 function scanFolder(f) {
-  scanner_evt.on('new-song', function (song) {
-    console.log('Added song', song);
-  });
-
-  scanner_evt.on('new-album', function (album) {
-    console.log('Added album', album);
-  });
-
-  scanner_evt.on('new-artist', function (artist) {
-    console.log('Added artist', artist);
-  });
-
-  return new Promise(function(resolve, reject) {
-    scraper.scan(f);
-
-    scanner_evt.on('end', () =>{
-      console.log('Scanning complete!');
-      f.scanned = true;
-      f.last_scan = new Date();
-      f.save()
-        .then(r => resolve(r))
-        .catch(e => reject(e));
-    });
-
-    scanner_evt.on('error', (e) => {
-      reject(e);
-    });
-  });
+  return scraper.scan(f)
+           .then(r => {
+             f.scanned = true;
+             f.last_scan = new Date();
+             return f.save();
+           });
 }
 
 router.post('/folders/scan', function(req, res) {
   db.Folder.findAll()
     .then(folders => {
       folders.forEach(f => {
-        scanFolder(f).then(r => res.send('Scanning complete!'));
+        scanFolder(f).then(r => res.send('Scanning complete!'))
+                     .catch(e => res.send('Scanning error'));
       });
     });
 });
@@ -135,7 +114,8 @@ router.post('/folders/scan', function(req, res) {
 router.post('/folders/:id/scan', function(req, res) {
   db.Folder.findOne({ where: { id: req.params.id } })
     .then(f => {
-        scanFolder(f).then(r => res.send('Scanning complete!'));
+        scanFolder(f).then(r => res.send('Scanning complete!'))
+                     .catch(e => res.send('Scanning error'));
     });
 });
 

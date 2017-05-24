@@ -6,7 +6,7 @@ const app = require('express')();
 const server = require('http').Server(app);
 const io = require('socket.io')(server);
 const rest_router = require('./rest/router');
-const scanner_evt = require('./scraper').scanner_evt;
+var app_events = require('./app-events');
 
 const db = require('./db');
 
@@ -38,7 +38,11 @@ app.get('/files/pics/albums/:id', function(req, res) {
       }
     })
     .then(album => {
-      if (album) res.sendFile(album.pic);
+      if (album && album.art) res.sendFile(`${__dirname}/files/album-art/${album.name}.jpg`);
+      else {
+        res.status(404);
+        res.send({ error: 'Not found' });
+      }
     });
 });
 
@@ -47,17 +51,17 @@ server.listen(3000, function() {
 });
 
 io.on('connection', function (socket) {
-  if (scanner_evt) {
-    scanner_evt.on('new-song', function (song) {
+  if (app_events.db) {
+    app_events.db.on('new-song', function (song) {
       socket.emit('new-song', {name: song});
     });
-    scanner_evt.on('new-album', function (album) {
+    app_events.db.on('new-album', function (album) {
       socket.emit('new-album', {name: album});
     });
-    scanner_evt.on('new-artist', function (artist) {
+    app_events.db.on('new-artist', function (artist) {
       socket.emit('new-artist', {name: artist});
     });
-    scanner_evt.on('new-genre', function (genre) {
+    app_events.db.on('new-genre', function (genre) {
       socket.emit('new-genre', {name: genre});
     });
   }
