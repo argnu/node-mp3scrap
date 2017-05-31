@@ -11,7 +11,7 @@ var app_events = require('./app-events');
 function downloadArtLastFM(artist, album) {
   return new Promise(function(resolve, reject) {
     try {
-      console.log(`${album}: Fetching album art...`);
+      // console.log(`${album}: Fetching album art...`);
       let url = `https://www.last.fm/music/${artist}/${album}`;
       request(url, function(error, response, html) {
         if (error) reject(error);
@@ -30,7 +30,7 @@ function downloadArtLastFM(artist, album) {
                 reject(error);
               })
               .pipe(fs.createWriteStream(`${__dirname}/files/album-art/${album}.jpg`));
-              console.log('Done!');
+              // console.log('Done!');
               resolve(`${__dirname}/files/album-art/${album}.jpg`);
             }
           }
@@ -113,17 +113,11 @@ function processAlbum(artist, album_data, search_art) {
                       .then(art_path => {
                         let data = album_data;
                         a.art = true;
-                        a.save().then(() => resolve(a))
-                                .catch(e => reject(e));
+                        a.save();
                       })
-                      .catch(e => {
-                        resolve(a);
-                        console.log('Error descargando album art', e);
-                      });
+                      .catch(e => e);
                   }
-                  else {
-                    resolve(a);
-                  }
+                  resolve(a);
                 });
             }
             else {
@@ -132,15 +126,12 @@ function processAlbum(artist, album_data, search_art) {
                   .then(art_path => {
                     let data = album_data;
                     albums[0].art = true;
-                    albums[0].save().then(() => resolve(albums[0]))
-                            .catch(e => reject(e));
+                    albums[0].save();
                   })
-                  .catch(e => {
-                    resolve(albums[0]);
-                    console.log('Error descargando album art', e);
-                  });
+                  .catch(e => e);
               }
-              else resolve(albums[0]);
+
+              resolve(albums[0]);
             }
           })
           .catch(e => reject(e));
@@ -209,17 +200,18 @@ function findOrAddGenre(genre_name) {
   });
 }
 
-function processFiles(gen, folder) {
+function processFiles(gen, folder, total) {
   return new Promise(function(resolve, reject) {
     let val = gen.next().value;
     if (val === null) resolve();
     else {
-      mm(fs.createReadStream(val), function (err, metadata) {
+      mm(fs.createReadStream(val.elem), function (err, metadata) {
         if (err) throw err;
-        metadata.file = val;
+        metadata.file = val.elem;
         processFile(metadata, folder)
           .then(a => {
-            processFiles(gen, folder)
+            console.log(`Procesado archivo ${val.index} de ${total}`);
+            processFiles(gen, folder, total)
               .then(() =>  resolve())
               .catch(e => reject(e));
           })
@@ -232,7 +224,7 @@ function processFiles(gen, folder) {
 
 function* itFiles(array){
   for (var i = 0; i < array.length; i++) {
-    yield array[i];
+    yield {elem: array[i], index: i};
   }
   yield null;
 }
@@ -240,8 +232,9 @@ function* itFiles(array){
 module.exports.scan = function(folder) {
   return utils.getMp3s(folder.path)
     .then(files => {
+        let total = files.length;
         let gen = itFiles(files);
-        return processFiles(gen, folder);
+        return processFiles(gen, folder, total);
     })
     .catch(error => {
       console.log(error);
