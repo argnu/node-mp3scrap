@@ -13,6 +13,7 @@ router.use(function (req, res, next) {
   for(let key in req.query) {
     if (key === 'offset') params.offset = req.query.offset;
     else if (key === 'limit') params.limit = req.query.limit;
+    else if (key === 'search') params.where.name = { $like: `%${req.query[key]}%` };
     else params.where[key] = req.query[key];
   }
   req.sql = params;
@@ -179,6 +180,25 @@ router.post('/users/authenticate', function(req, res) {
         res.json({ valid: false });
       }
     });
+});
+
+router.get('/users', function(req, res) {
+  db.User.findAll({
+    attributes: ['id', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt']
+  })
+  .then(users => {
+    res.json({ data: users});
+  });
+});
+
+router.put('/user/:id/playlist', function(req, res) {
+  db.User.find({
+    where: { id: req.params.id }
+  })
+  .then(user => db.Playlist.build({ name: req.body.playlist.name }).save())
+  .then(playlist =>  user.addPlaylist(playlist))
+  .then(p => res.json({ success: true }))
+  .catch(error => res.json({ error: true }));
 });
 
 module.exports = router;
