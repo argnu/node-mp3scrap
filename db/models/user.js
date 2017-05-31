@@ -1,5 +1,3 @@
-// jshint esversion:6
-
 const Sequelize = require('sequelize');
 const bcrypt = require('bcrypt');
 
@@ -20,6 +18,7 @@ module.exports = function (sequelize, DataTypes) {
     first_name: { type: Sequelize.STRING, field: 'first_name' },
     last_name: { type: Sequelize.STRING, field: 'last_name' },
     email: { type: Sequelize.STRING, field: 'email' },
+    admin: { type: Sequelize.BOOLEAN, field: 'admin' },
     password_digest: {
   		type: Sequelize.STRING,
   		validate: {
