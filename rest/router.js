@@ -6,6 +6,8 @@ const body_parser = require('body-parser');
 const router = express.Router();
 const db = require('../db');
 const scraper = require('../scraper');
+const auth = require('../auth');
+const return_types = require('../return_types');
 
 router.use(body_parser.json());
 router.use(function (req, res, next) {
@@ -171,27 +173,51 @@ router.post('/folders/:id/scan', function(req, res) {
 });
 
 router.post('/users/authenticate', function(req, res) {
-  db.User.findOne({ where: { email: req.body.email } })
-    .then(user => {
-      if (user && user.authenticate(req.body.pass)) {
-        res.json({ valid: true, data: user.dataValues});
-      }
-      else {
-        res.json({ valid: false });
-      }
-    });
+  auth.authenticate(req.body.email, req.body.pass)
+      .then(r => {
+        return_types[r.return_type](res, r.json);
+      })
+      .catch(e => {
+        return_types.internal_error(res, e);
+      });
 });
 
-router.get('/users', function(req, res) {
+router.get('/users', auth.validation.isAdmin, function(req, res) {
   db.User.findAll({
     attributes: ['id', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt']
   })
   .then(users => {
-    res.json({ data: users});
+    res.json({ data: users });
   });
 });
 
-router.put('/user/:id/playlist', function(req, res) {
+router.get('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
+  db.User.findOne({ attributes: ['id', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt'], where: { id: req.params.id } })
+  .then(user => {
+    if (!user) return_types.not_found(res);
+    else return_types.ok(res, user.dataValues);
+  })
+  .catch(e => {
+    return_types.internal_error(res, e);
+  });
+});
+
+router.put('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
+  db.User.findOne({ where: { id: req.params.id } })
+  .then(user => {
+    if (!user) return_types.not_found(res);
+    else {
+      for(let key in req.body.user) user[key] = req.body.user[key];
+      user.save()
+          .then(u => return_types.ok(res, { message: 'Recurso modificado con éxito'} ));
+    }
+  })
+  .catch(e => {
+    return_types.internal_error(res, e);
+  });
+});
+
+router.put('/user/:id/playlist', auth.validation.isOwner, function(req, res) {
   db.User.find({
     where: { id: req.params.id }
   })
