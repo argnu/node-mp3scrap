@@ -2,6 +2,10 @@ module.exports.ok = function(res, json) {
   res.status(200).json(json);
 };
 
+module.exports.created = function(res, json) {
+  res.status(201).json(json);
+};
+
 module.exports.token_expire = function(res) {
   res.status(400).json({ message: "Token Expired" });
 };
