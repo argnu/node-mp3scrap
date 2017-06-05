@@ -222,6 +222,7 @@ router.put('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
     if (!user) return_types.not_found(res);
     else {
       for(let key in req.body.user) user[key] = req.body.user[key];
+      console.log(req.params.id);
       user.save()
           .then(u => return_types.ok(res, { message: 'Recurso modificado con éxito'} ));
     }
@@ -236,7 +237,9 @@ router.delete('/users/:id', auth.validation.isAdmin, function(req, res) {
   .then(user => {
     if (!user) return_types.not_found(res);
     else {
-      for(let key in req.body.user) user[key] = req.body.user[key];
+      for(let key in req.body.user) {
+        if (key != 'password' && key!= 'password_confirmation') user[key] = req.body.user[key];
+      }
       user.destroy()
           .then(u => return_types.ok(res, { message: 'Recurso eliminado con éxito'} ));
     }
