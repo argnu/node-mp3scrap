@@ -5,7 +5,7 @@ const express = require('express');
 const body_parser = require('body-parser');
 const router = express.Router();
 const db = require('../db');
-const scraper = require('../scraper');
+const scraper = require('../scraper/wraper');
 const auth = require('../auth');
 const return_types = require('../return_types');
 
@@ -144,31 +144,14 @@ router.delete('/folders/:id', function(req, res) {
     .catch(e => res.json({error: e}));
 });
 
-
-function scanFolder(f) {
-  return scraper.scan(f)
-           .then(r => {
-             f.scanned = true;
-             f.last_scan = new Date();
-             return f.save();
-           });
-}
-
-router.post('/folders/scan', function(req, res) {
-  db.Folder.findAll()
-    .then(folders => {
-      folders.forEach(f => {
-        scanFolder(f).then(r => res.send('Scanning complete!'))
-                     .catch(e => res.send('Scanning error'));
-      });
-    });
-});
-
 router.post('/folders/:id/scan', function(req, res) {
   db.Folder.findOne({ where: { id: req.params.id } })
     .then(f => {
-        scanFolder(f).then(r => res.send('Scanning complete!'))
-                     .catch(e => res.send('Scanning error'));
+        scraper.scan(f.path, f.search_art ? 'True': 'False');
+        return_type.ok(res, { msg: "Scanning started", folder: req.params.id });
+    })
+    .catch(e => {
+      return_types.internal_error(res, e);
     });
 });
 

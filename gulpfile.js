@@ -1,5 +1,3 @@
-// jshint esversion:6
-
 const gulp = require('gulp');
 const db = require('./db');
 

@@ -2,7 +2,3 @@ node_modules
 database.sqlite
 files/album-art/*
 !files/album-art/.gitkeep
-python/scraper/bin
-python/scraper/include
-python/scraper/lib
-python/scraper/local
