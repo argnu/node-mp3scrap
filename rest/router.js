@@ -167,7 +167,7 @@ router.post('/users/authenticate', function(req, res) {
 
 router.get('/users', auth.validation.isAdmin, function(req, res) {
   db.User.findAll({
-    attributes: ['id', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt']
+    attributes: ['id', 'admin', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt']
   })
   .then(users => {
     res.json({ data: users });
@@ -185,14 +185,46 @@ router.get('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
   });
 });
 
+router.post('/users', auth.validation.isOwnerOrAdmin, function(req, res) {
+  let user = req.body.user;
+  let new_user = db.User.build(user);
+  new_user.validate()
+    .then(err => {
+      if (!err) {
+        new_user.save()
+            .then(u => return_types.created(res, { message: 'Recurso creado con éxito', url: `http://localhost:3000/rest/users/${u.id}` } ))
+            .catch(e => return_types.internal_error(res, e));
+      }
+      else return_types.internal_error(res, err);
+    });
+});
+
 router.put('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
   db.User.findOne({ where: { id: req.params.id } })
   .then(user => {
     if (!user) return_types.not_found(res);
     else {
       for(let key in req.body.user) user[key] = req.body.user[key];
+      console.log(req.params.id);
       user.save()
           .then(u => return_types.ok(res, { message: 'Recurso modificado con éxito'} ));
+    }
+  })
+  .catch(e => {
+    return_types.internal_error(res, e);
+  });
+});
+
+router.delete('/users/:id', auth.validation.isAdmin, function(req, res) {
+  db.User.findOne({ where: { id: req.params.id } })
+  .then(user => {
+    if (!user) return_types.not_found(res);
+    else {
+      for(let key in req.body.user) {
+        if (key != 'password' && key!= 'password_confirmation') user[key] = req.body.user[key];
+      }
+      user.destroy()
+          .then(u => return_types.ok(res, { message: 'Recurso eliminado con éxito'} ));
     }
   })
   .catch(e => {
