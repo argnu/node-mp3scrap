@@ -10,16 +10,20 @@ module.exports.token_expire = function(res) {
   res.status(400).json({ message: "Token Expired" });
 };
 
-module.exports.not_authorized = function(res) {
-  res.status(403).json({ message: "Not Authorized" });
-};
-
 module.exports.invalid_token = function(res) {
   res.status(401).json({ message: "Invalid Token" });
 };
 
+module.exports.not_authorized = function(res) {
+  res.status(403).json({ message: "Not Authorized" });
+};
+
 module.exports.not_found = function(res) {
   res.status(404).json({ message: "Documento inexistente" });
+};
+
+module.exports.conflict = function(res) {
+  res.status(409).json({ message: "Problemas de inconsistencias" });
 };
 
 module.exports.internal_error = function(res, e) {

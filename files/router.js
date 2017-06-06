@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const return_types = require('../return_types');
+const db = require('../db');
 
-router.get('/files/songs/:id', function(req, res) {
+
+router.get('/songs/:id', function(req, res) {
   db.Song.findOne({ where: { id: req.params.id } })
     .then(song => {
       if (song) res.sendFile(song.uri);
@@ -13,7 +15,7 @@ router.get('/files/songs/:id', function(req, res) {
     });
 });
 
-router.get('/files/album-art/:id', function(req, res) {
+router.get('/album-art/:id', function(req, res) {
   db.Album.findOne({ where: { id: req.params.id } })
     .then(album => {
       if (album && album.art) res.sendFile(`${__dirname}/files/album-art/${album.name}.jpg`);
@@ -21,7 +23,7 @@ router.get('/files/album-art/:id', function(req, res) {
     })
     .catch(e => {
       return_types.internal_error(res, e);
-    });    
+    });
 });
 
 module.exports = router;

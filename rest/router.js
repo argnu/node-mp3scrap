@@ -232,14 +232,75 @@ router.delete('/users/:id', auth.validation.isAdmin, function(req, res) {
   });
 });
 
-router.put('/user/:id/playlist', auth.validation.isOwner, function(req, res) {
+router.put('/users/:id/playlists', auth.validation.isOwner, function(req, res) {
   db.User.find({
     where: { id: req.params.id }
   })
-  .then(user => db.Playlist.build({ name: req.body.playlist.name }).save())
-  .then(playlist =>  user.addPlaylist(playlist))
-  .then(p => res.json({ success: true }))
-  .catch(error => res.json({ error: true }));
+  .then(user => {
+    return db.Playlist.find({ where: { name: req.body.name, userId: req.params.id }})
+      .then(p => {
+          if (p) throw { name : "conflict", message : "Playlist existente" };
+          else {
+            return db.Playlist.build({ name: req.body.name }).save()
+              .then(playlist =>  {
+                let proms = [];
+                req.body.songs.forEach(s => {
+                  proms.push(db.Song.find( { where: { id: s.id } }).then(s => playlist.addSong(s)));
+                });
+                return Promise.all(proms).then(rs => user.addPlaylist(playlist));
+               });
+          }
+      });
+  })
+  .then(p => return_types.ok(res, { message: 'Playlist añadido ', id: req.params.id } ))
+  .catch(e => {
+    if (e.name === 'conflict') return_types.conflict(res);
+    else return_types.internal_error(res, e);
+  });
+});
+
+router.delete('/users/:id/playlists/:id_playlist', auth.validation.isOwner, function(req, res) {
+  db.User.find({
+    where: { id: req.params.id }
+  })
+  .then(user => {
+    return db.Playlist.find({ where: { id: req.params.id_playlist, userId: req.params.id }})
+      .then(p => {
+          if (!p) throw { name : "not_found", message : "Playlist inexistente" };
+          else return p.destroy();
+      });
+  })
+  .then(p => return_types.ok(res, { message: 'Playist eliminado ', id: req.params.id } ))
+  .catch(e => {
+    if (e.name === 'not_found') return_types.not_found(res);
+    else return_types.internal_error(res, e);
+  });
+});
+
+router.get('/users/:id/playlists', auth.validation.isOwner, function(req, res) {
+  db.User.find({
+    where: { id: req.params.id },
+    attributes: [ 'id', 'email'],
+    include: [{
+        model: db.Playlist,
+        as: 'playlists',
+        include: [{
+          model: db.Song,
+          as: 'songs',
+          include: [{
+            model: db.Album,
+            attributes: [ 'name' ],
+            as: 'album'
+          }, {
+            model: db.Artist,
+            attributes: [ 'name' ],
+            as: 'artist'
+          }]
+        }]
+    }]
+  })
+  .then(user => return_types.ok(res, user.dataValues))
+  .catch(e => return_types.internal_error(res, e));
 });
 
 module.exports = router;

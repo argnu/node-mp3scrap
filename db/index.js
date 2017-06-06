@@ -42,6 +42,7 @@ module.exports.Song = Song;
 module.exports.Genre = Genre;
 module.exports.User = User;
 module.exports.Folder = Folder;
+module.exports.Playlist = Playlist;
 
 module.exports.init = function() {
   return sequelize.sync({ force: true });
