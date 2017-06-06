@@ -10,3 +10,6 @@ imagen = a.gallery-image[0] > img[src]
 
 
 PARA QUE FUNCIONEN LAS FOREIGN KEYS EN SQLITE3 HAY Q HABILITAR "PRAGMA"
+
+PARA CREAR CERTIFICADO https
+openssl req -nodes -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
