@@ -1,6 +1,13 @@
 const path = require('path');
 const spawn = require('child_process').spawn;
-var app_events = require('../app-events');
+const bunyan = require('bunyan');
+const log = bunyan.createLogger({
+    name: 'rest',
+    streams: [{
+        path: path.resolve(__dirname, '..', 'logs/errors.log'),
+    }]
+});
+var app_events = require('../custom-events/app-events');
 
 module.exports.scan = function(folder) {
     try {
@@ -15,19 +22,20 @@ module.exports.scan = function(folder) {
           let message = JSON.parse(data.toString());
           app_events.db.emit(message.type, message.elem);
         } catch (e) {
-          // console.log(e);
+          log.info(e);
         }
       });
 
       scraper_proc.stderr.on('data', (data) => {
-        console.error('Error scanning folder', folder_path);
+        log.info(data.toString());
       });
 
       scraper_proc.on('close', (code) => {
-        app_events.db.emit('scan_finished', folder);
+        app_events.db.emit('scan-finished', folder.path);
       });
 
     } catch (e) {
-      console.error('Error scanning folder', folder_path);
+      log.info(e);
+      app_events.db.emit('scan-error', folder.path);
     }
 };

@@ -24,9 +24,12 @@ def isMP3(filePath):
 def download(url, dest):
     r = requests.get(url, stream=True)
     if r.status_code == 200:
-        with open(dest, 'wb') as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
+        try:
+            with open(dest, 'wb') as f:
+                r.raw.decode_content = True
+                shutil.copyfileobj(r.raw, f)
+        except Exception as e:
+            print e
 
 def downloadArtLastFM(artist, album):
     try:
@@ -44,7 +47,10 @@ def downloadArtLastFM(artist, album):
                 a_imagen = soup.find('a', { 'class': 'gallery-image' });
                 img_imagen = a_imagen.find('img')
                 url_imagen = img_imagen.get('src')
-                download(url_imagen, '../files/album-art/' + album + '.jpg')
+                file_dir = os.path.dirname(os.path.realpath('__file__'))
+                file_name = album + '.jpg'
+                file_path = os.path.join(file_dir, 'files/album-art/' + file_name)
+                download(url_imagen, file_path)
                 return True
     except Exception as e:
         return False
@@ -88,9 +94,10 @@ def scan(db_path, folder_path, search_art):
             year = album['year']
             id_artist = artist['id']
             cursor.execute(query, (name, year, art, id_artist, datetime.datetime.now(), datetime.datetime.now()))
-            print '{{ "type": "new-album", "elem": {{ "name": "{}", "year": {}, "art": {}, "artistId":{} }}  }}'.format(name, year, art, id_artist)
+            id_inserted = cursor.lastrowid
+            print '{{ "type": "new-album", "elem": {{ "id": {}, "name": "{}", "year": {}, "art": {}, "artistId":{} }}  }}'.format(id_inserted, name, year, 'true' if art else 'false', id_artist)
             sys.stdout.flush()
-            return cursor.lastrowid
+            return id_inserted
         else:
             if (not check[1] and search_art):
                 art = downloadArtLastFM(artist['name'], album['name'])
@@ -111,9 +118,10 @@ def scan(db_path, folder_path, search_art):
                 VALUES (?, ?, ?)
             """.format(table='artist')
             cursor.execute(query, (artist, datetime.datetime.now(), datetime.datetime.now()))
-            print '{{ "type": "new-artist", "elem": {{ "name": "{}" }}  }}'.format(artist)
+            id_inserted = cursor.lastrowid
+            print '{{ "type": "new-artist", "elem": {{ "id": {}, "name": "{}" }}  }}'.format(id_inserted, artist)
             sys.stdout.flush()
-            return { 'id': cursor.lastrowid, 'name': artist }
+            return { 'id': id_inserted, 'name': artist }
 
     def process(file, folder, commit):
         tag_data = eyed3.core.load(file)
@@ -133,7 +141,7 @@ def scan(db_path, folder_path, search_art):
             conn.commit()
 
     def saveFolder():
-        cursor.execute('SELECT id FROM folder WHERE path=(?)', (folder_path,))
+        cursor.execute('SELECT id FROM folder WHERE path=(?)', (unicode(folder_path),))
         check = cursor.fetchone()
         if check is None:
             query = """
@@ -141,7 +149,7 @@ def scan(db_path, folder_path, search_art):
                     {table} (path, search_art, scanned, last_scan, scan_finished, createdAt, updatedAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """.format(table='folder')
-            cursor.execute(query, (folder_path, search_art, 0, '', 0, datetime.datetime.now(), datetime.datetime.now(), ))
+            cursor.execute(query, (unicode(folder_path), search_art, 0, '', 0, datetime.datetime.now(), datetime.datetime.now(), ))
             return cursor.lastrowid
         else:
             return check[0]

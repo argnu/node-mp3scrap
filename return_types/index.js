@@ -26,6 +26,6 @@ module.exports.conflict = function(res) {
   res.status(409).json({ message: "Problemas de inconsistencias" });
 };
 
-module.exports.internal_error = function(res, e) {
-  res.status(500).json({ message: 'Error interno en el servidor', error: e });
+module.exports.internal_error = function(res) {
+  res.status(500).json({ message: 'Error interno en el servidor' });
 };

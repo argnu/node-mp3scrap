@@ -3,14 +3,21 @@
 const fs = require('fs');
 const path = require('path');
 const app = require('express')();
-const server = require('http').Server(app);
-const io = require('socket.io')(server);
+const bunyan = require('bunyan');
+const https = require('https');
+
 const rest_router = require('./rest/router');
 const file_router = require('./files/router');
-var app_events = require('./app-events');
+var app_events = require('./custom-events/app-events');
 
 const db = require('./db');
 
+let server = https.createServer({
+  key: fs.readFileSync(`${process.argv[2]}/key.pem`),
+  cert: fs.readFileSync(`${process.argv[2]}/cert.pem`)
+}, app).listen(3000);
+
+const io = require('socket.io')(server);
 
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -22,14 +29,14 @@ app.use(function(req, res, next) {
 app.use('/rest', rest_router);
 app.use('/files', file_router);
 
-server.listen(3000, 'localhost', function() {
-  console.log('Ejecutando servidor en puerto 3000');
-});
 
 io.on('connection', function (socket) {
   if (app_events.db) {
     app_events.db.on('scan-finished', function (folder) {
       socket.emit('scan-finished', folder);
+    });
+    app_events.db.on('scan-error', function (folder) {
+      socket.emit('scan-error', folder);
     });
     app_events.db.on('new-album', function (album) {
       socket.emit('new-album', album);

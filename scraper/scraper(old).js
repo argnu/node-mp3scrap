@@ -6,7 +6,7 @@ const fs = require('fs');
 const mm = require('musicmetadata');
 const request = require('request');
 const cheerio = require('cheerio');
-var app_events = require('./app-events');
+var app_events = require('./custom-events/app-events');
 
 function downloadArtLastFM(artist, album) {
   return new Promise(function(resolve, reject) {

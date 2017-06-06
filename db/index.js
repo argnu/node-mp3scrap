@@ -21,6 +21,7 @@ var Genre = sequelize.import(__dirname + "/models/genre");
 var User = sequelize.import(__dirname + "/models/user");
 var Folder = sequelize.import(__dirname + "/models/folder");
 var Playlist = sequelize.import(__dirname + "/models/playlist");
+var ListSong = sequelize.import(__dirname + "/models/listsong");
 
 Artist.hasMany(Album, { onDelete: 'CASCADE' });
 Album.belongsTo(Artist);
@@ -32,7 +33,9 @@ Song.belongsTo(Artist);
 Artist.hasMany(Song);
 Song.belongsToMany(Genre, {through: 'SongGenre'});
 Genre.belongsToMany(Song, {through: 'SongGenre'});
-Playlist.hasMany(Song);
+ListSong.hasOne(Song);
+Playlist.hasMany(ListSong, { onDelete: 'CASCADE' });
+ListSong.belongsTo(Playlist);
 Playlist.belongsTo(User);
 User.hasMany(Playlist);
 
@@ -43,6 +46,7 @@ module.exports.Genre = Genre;
 module.exports.User = User;
 module.exports.Folder = Folder;
 module.exports.Playlist = Playlist;
+module.exports.ListSong = ListSong;
 
 module.exports.init = function() {
   return sequelize.sync({ force: true });

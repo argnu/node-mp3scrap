@@ -1,5 +1,3 @@
-//jshint esversion:6
-
 const path = require('path');
 const express = require('express');
 const body_parser = require('body-parser');
@@ -8,6 +6,13 @@ const db = require('../db');
 const scraper = require('../scraper/wraper');
 const auth = require('../auth');
 const return_types = require('../return_types');
+const bunyan = require('bunyan');
+const log = bunyan.createLogger({
+    name: 'rest',
+    streams: [{
+        path: path.resolve(__dirname, '..', 'logs/errors.log'),
+    }]
+});
 
 router.use(body_parser.json());
 router.use(function (req, res, next) {
@@ -31,10 +36,11 @@ router.get('/artists', function(req, res) {
     }]
   })
   .then(arts => {
-      res.json(arts);
+      return_types.ok(res, arts);
   })
   .catch(error => {
-    res.send(error);
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -47,10 +53,11 @@ router.get('/artists/:id', function(req, res) {
     }]
   })
   .then(art => {
-      res.json(art);
+      return_types.ok(res, art);
   })
   .catch(error => {
-    res.send(error);
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -60,10 +67,12 @@ router.get('/albums', function(req, res) {
     ['name', 'ASC']
   ];
   db.Album.findAll(req.sql)
-  .then(albums => { res.json(albums); })
+  .then(albums => {
+    return_types.ok(res, albums);
+  })
   .catch(error => {
-    res.status(500);
-    res.json({errorType: 'Parámetros de consulta incorrectos', error});
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -82,19 +91,25 @@ router.get('/songs', function(req, res) {
     attributes: [ 'name' ],
     as: 'artist'
   }];
+
   db.Song.findAll(req.sql)
-  .then(songs => { res.json(songs); })
+  .then(songs => return_types.ok(res, songs))
   .catch(error => {
-    res.status(500);
-    res.json({errorType: 'Parámetros de consulta incorrectos', error});
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
+
 router.get('/folders', function(req, res) {
   db.Folder.findAll()
-    .then(folders => res.json(folders))
-    .catch(e => res.json({error: e}));
+    .then(folders => return_types.ok(res, folders))
+    .catch(error => {
+      log.info(error);
+      return_types.internal_error(res);
+    });
 });
+
 
 router.post('/folders', function(req, res) {
   let folder_data = {
@@ -104,8 +119,12 @@ router.post('/folders', function(req, res) {
   };
 
   db.Folder.build(folder_data).save()
-    .then(a => {
-      res.json({msg: 'Folder added', id: a.id });
+    .then(f => {
+      return_types.created(res, { msg: "Carpeta creada con éxito", "uri": `https://localhost:3000/rest/folders/${f.id}`});
+    })
+    .catch(error => {
+      log.info(error);
+      return_types.internal_error(res);
     });
 });
 
@@ -115,9 +134,12 @@ router.put('/folders/:id', function(req, res) {
       folder.scanned = req.body.scanned;
       folder.search_art = req.body.search_art;
       folder.save()
-            .then(() => res.json({msg: 'Folder updated', id: folder.id}));
+            .then(f => return_types.ok(res, { msg: "Carpeta modificada con éxito", "uri": `https://localhost:3000/rest/folders/${f.id}`}));
     })
-    .catch(e => res.json({error: e}));
+    .catch(error => {
+      log.info(error);
+      return_types.internal_error(res);
+    });
 });
 
 function checkAndDestroyArtist() {
@@ -132,26 +154,31 @@ function checkAndDestroyArtist() {
 }
 
 router.delete('/folders/:id', function(req, res) {
-  db.Folder.findOne()
-    .then(f => {
+  db.Folder.findOne({ where: { id: req.params.id }})
+    .then(f =>
       f.destroy()
         .then(r => {
-          res.json({ msg: 'Folder deleted' });
+          return_types.ok(res, { msg: "Carpeta eliminada con éxito", "id": `${req.params.id}`});
           checkAndDestroyArtist();
-        })
-        .catch(e => res.json({error: e}));
-    })
-    .catch(e => res.json({error: e}));
+     }))
+     .catch(error => {
+       log.info(error);
+       return_types.internal_error(res);
+     });
 });
 
 router.post('/folders/:id/scan', function(req, res) {
   db.Folder.findOne({ where: { id: req.params.id } })
     .then(f => {
-        scraper.scan(f.path, f.search_art ? 'True': 'False');
-        return_type.ok(res, { msg: "Scanning started", folder: req.params.id });
+        if (f) {
+          scraper.scan(f);
+          return_types.ok(res, { msg: "Scanning started", folder: req.params.id });
+        }
+        else return_types.not_found(res);
     })
-    .catch(e => {
-      return_types.internal_error(res, e);
+    .catch(error => {
+      log.info(error);
+      return_types.internal_error(res);
     });
 });
 
@@ -160,8 +187,9 @@ router.post('/users/authenticate', function(req, res) {
       .then(r => {
         return_types[r.return_type](res, r.json);
       })
-      .catch(e => {
-        return_types.internal_error(res, e);
+      .catch(error => {
+        log.info(error);
+        return_types.internal_error(res);
       });
 });
 
@@ -169,8 +197,10 @@ router.get('/users', auth.validation.isAdmin, function(req, res) {
   db.User.findAll({
     attributes: ['id', 'admin', 'first_name', 'last_name', 'email', 'createdAt', 'updatedAt']
   })
-  .then(users => {
-    res.json({ data: users });
+  .then(users => return_types.ok(res, users))
+  .catch(error => {
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -180,8 +210,9 @@ router.get('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
     if (!user) return_types.not_found(res);
     else return_types.ok(res, user.dataValues);
   })
-  .catch(e => {
-    return_types.internal_error(res, e);
+  .catch(error => {
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -192,10 +223,16 @@ router.post('/users', auth.validation.isOwnerOrAdmin, function(req, res) {
     .then(err => {
       if (!err) {
         new_user.save()
-            .then(u => return_types.created(res, { message: 'Recurso creado con éxito', url: `http://localhost:3000/rest/users/${u.id}` } ))
-            .catch(e => return_types.internal_error(res, e));
+            .then(u => return_types.created(res, { msg: 'Recurso creado con éxito', url: `http://localhost:3000/rest/users/${u.id}` } ))
+            .catch(error => {
+              log.info(error);
+              return_types.internal_error(res);
+            });
       }
-      else return_types.internal_error(res, err);
+      else {
+        log.info(err);
+        return_types.internal_error(res);
+      }
     });
 });
 
@@ -205,13 +242,13 @@ router.put('/users/:id', auth.validation.isOwnerOrAdmin, function(req, res) {
     if (!user) return_types.not_found(res);
     else {
       for(let key in req.body.user) user[key] = req.body.user[key];
-      console.log(req.params.id);
       user.save()
-          .then(u => return_types.ok(res, { message: 'Recurso modificado con éxito'} ));
+          .then(u => return_types.ok(res, { msg: 'Recurso modificado con éxito'} ));
     }
   })
-  .catch(e => {
-    return_types.internal_error(res, e);
+  .catch(error => {
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -224,11 +261,12 @@ router.delete('/users/:id', auth.validation.isAdmin, function(req, res) {
         if (key != 'password' && key!= 'password_confirmation') user[key] = req.body.user[key];
       }
       user.destroy()
-          .then(u => return_types.ok(res, { message: 'Recurso eliminado con éxito'} ));
+          .then(u => return_types.ok(res, { msg: 'Recurso eliminado con éxito'} ));
     }
   })
-  .catch(e => {
-    return_types.internal_error(res, e);
+  .catch(error => {
+    log.info(error);
+    return_types.internal_error(res);
   });
 });
 
@@ -239,41 +277,33 @@ router.put('/users/:id/playlists', auth.validation.isOwner, function(req, res) {
   .then(user => {
     return db.Playlist.find({ where: { name: req.body.name, userId: req.params.id }})
       .then(p => {
-          if (p) throw { name : "conflict", message : "Playlist existente" };
+          if (p) throw { name : "conflict", msg : "Playlist existente" };
           else {
             return db.Playlist.build({ name: req.body.name }).save()
               .then(playlist =>  {
                 let proms = [];
                 req.body.songs.forEach(s => {
-                  proms.push(db.Song.find( { where: { id: s.id } }).then(s => playlist.addSong(s)));
+                  proms.push(
+                    db.Song.find( { where: { id: s.id } })
+                      .then(song => {
+                        db.ListSong.build({ order: s.order }).save()
+                          .then(ls => {ls.setSong(song); return ls;})
+                          .then(ls => playlist.addListsong(ls) );
+                      })
+                  );
                 });
                 return Promise.all(proms).then(rs => user.addPlaylist(playlist));
                });
           }
       });
   })
-  .then(p => return_types.ok(res, { message: 'Playlist añadido ', id: req.params.id } ))
+  .then(p => return_types.ok(res, { msg: 'Playlist añadido ', id: req.params.id } ))
   .catch(e => {
     if (e.name === 'conflict') return_types.conflict(res);
-    else return_types.internal_error(res, e);
-  });
-});
-
-router.delete('/users/:id/playlists/:id_playlist', auth.validation.isOwner, function(req, res) {
-  db.User.find({
-    where: { id: req.params.id }
-  })
-  .then(user => {
-    return db.Playlist.find({ where: { id: req.params.id_playlist, userId: req.params.id }})
-      .then(p => {
-          if (!p) throw { name : "not_found", message : "Playlist inexistente" };
-          else return p.destroy();
-      });
-  })
-  .then(p => return_types.ok(res, { message: 'Playist eliminado ', id: req.params.id } ))
-  .catch(e => {
-    if (e.name === 'not_found') return_types.not_found(res);
-    else return_types.internal_error(res, e);
+    else {
+      log.info(error);
+      return_types.internal_error(res);
+    }
   });
 });
 
@@ -285,22 +315,46 @@ router.get('/users/:id/playlists', auth.validation.isOwner, function(req, res) {
         model: db.Playlist,
         as: 'playlists',
         include: [{
-          model: db.Song,
-          as: 'songs',
+          model: db.ListSong,
+          as: 'listsongs',
           include: [{
-            model: db.Album,
-            attributes: [ 'name' ],
-            as: 'album'
-          }, {
-            model: db.Artist,
-            attributes: [ 'name' ],
-            as: 'artist'
+            model: db.Song,
+            as: 'song',
+            include: [{
+              model: db.Album,
+              attributes: [ 'name' ],
+              as: 'album'
+            }, {
+              model: db.Artist,
+              attributes: [ 'name' ],
+              as: 'artist'
+            }]
           }]
         }]
     }]
   })
   .then(user => return_types.ok(res, user.dataValues))
-  .catch(e => return_types.internal_error(res, e));
+  .catch(error => {
+    log.info(error);
+    return_types.internal_error(res);
+  });
+});
+
+
+router.delete('/playlists/:id', auth.validation.isOwner, function(req, res) {
+  db.Playlist.find({ where: { id: req.params.id }})
+    .then(p => {
+          if (!p) throw { name : "not_found", msg : "Playlist inexistente" };
+          else return p.destroy();
+    })
+    .then(p => return_types.ok(res, { msg: 'Playist eliminado ', id: req.params.id }))
+    .catch(e => {
+      if (e.name === 'not_found') return_types.not_found(res);
+      else {
+        log.info(e);
+        return_types.internal_error(res);
+      }
+    });
 });
 
 module.exports = router;
