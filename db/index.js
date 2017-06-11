@@ -3,7 +3,7 @@
 const Sequelize = require('sequelize');
 
 var sequelize = new Sequelize('database', 'username', 'password', {
-  host: 'localhost',
+  host: process.argv[3],
   dialect: 'sqlite',
   pool: {
     max: 5,

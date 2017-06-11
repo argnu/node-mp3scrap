@@ -13,8 +13,8 @@ var app_events = require('./custom-events/app-events');
 const db = require('./db');
 
 let server = https.createServer({
-  key: fs.readFileSync(`${process.argv[2]}/key.pem`),
-  cert: fs.readFileSync(`${process.argv[2]}/cert.pem`)
+  key: fs.readFileSync(`${process.argv[3]}/key.pem`),
+  cert: fs.readFileSync(`${process.argv[3]}/cert.pem`)
 }, app).listen(3000);
 
 const io = require('socket.io')(server);

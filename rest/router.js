@@ -120,7 +120,7 @@ router.post('/folders', function(req, res) {
 
   db.Folder.build(folder_data).save()
     .then(f => {
-      return_types.created(res, { msg: "Carpeta creada con éxito", "uri": `https://localhost:3000/rest/folders/${f.id}`});
+      return_types.created(res, { msg: "Carpeta creada con éxito", "uri": `https://process.argv[3]:3000/rest/folders/${f.id}`});
     })
     .catch(error => {
       log.info(error);
@@ -134,7 +134,7 @@ router.put('/folders/:id', function(req, res) {
       folder.scanned = req.body.scanned;
       folder.search_art = req.body.search_art;
       folder.save()
-            .then(f => return_types.ok(res, { msg: "Carpeta modificada con éxito", "uri": `https://localhost:3000/rest/folders/${f.id}`}));
+            .then(f => return_types.ok(res, { msg: "Carpeta modificada con éxito", "uri": `https://process.argv[3]:3000/rest/folders/${f.id}`}));
     })
     .catch(error => {
       log.info(error);
@@ -223,7 +223,7 @@ router.post('/users', auth.validation.isOwnerOrAdmin, function(req, res) {
     .then(err => {
       if (!err) {
         new_user.save()
-            .then(u => return_types.created(res, { msg: 'Recurso creado con éxito', url: `http://localhost:3000/rest/users/${u.id}` } ))
+            .then(u => return_types.created(res, { msg: 'Recurso creado con éxito', url: `http://process.argv[3]:3000/rest/users/${u.id}` } ))
             .catch(error => {
               log.info(error);
               return_types.internal_error(res);
