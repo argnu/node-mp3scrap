@@ -4,7 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const app = require('express')();
 const bunyan = require('bunyan');
-const https = require('https');
+// const https = require('https');
+const server = require('http').Server(app);
+server.listen(3000);
+
 
 const rest_router = require('./rest/router');
 const file_router = require('./files/router');
@@ -12,10 +15,10 @@ var app_events = require('./custom-events/app-events');
 
 const db = require('./db');
 
-let server = https.createServer({
-  key: fs.readFileSync(`${process.argv[3]}/key.pem`),
-  cert: fs.readFileSync(`${process.argv[3]}/cert.pem`)
-}, app).listen(3000);
+// let server = https.createServer({
+//   key: fs.readFileSync(`${process.argv[3]}/key.pem`),
+//   cert: fs.readFileSync(`${process.argv[3]}/cert.pem`)
+// }, app).listen(3000);
 
 const io = require('socket.io')(server);
 

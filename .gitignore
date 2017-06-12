@@ -2,3 +2,5 @@ node_modules
 database.sqlite
 files/album-art/*
 !files/album-art/.gitkeep
+logs/*
+!logs/.gitkeep
