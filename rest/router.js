@@ -341,13 +341,13 @@ router.get('/users/:id/playlists', auth.validation.isOwner, function(req, res) {
 });
 
 
-router.delete('/playlists/:id', auth.validation.isOwner, function(req, res) {
-  db.Playlist.find({ where: { id: req.params.id }})
+router.delete('/users/:id/playlists/:id_playlist', auth.validation.isOwner, function(req, res) {
+  db.Playlist.find({ where: { id: req.params.id_playlist }})
     .then(p => {
           if (!p) throw { name : "not_found", msg : "Playlist inexistente" };
           else return p.destroy();
     })
-    .then(p => return_types.ok(res, { msg: 'Playist eliminado ', id: req.params.id }))
+    .then(p => return_types.ok(res, { msg: 'Playist eliminado ', id: req.params.id_playlist }))
     .catch(e => {
       if (e.name === 'not_found') return_types.not_found(res);
       else {
