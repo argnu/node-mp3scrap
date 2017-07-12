@@ -4,21 +4,23 @@ const fs = require('fs');
 const path = require('path');
 const app = require('express')();
 const bunyan = require('bunyan');
-// const https = require('https');
-const server = require('http').Server(app);
-server.listen(3000);
-
-
+const config = require('./config');
 const rest_router = require('./rest/router');
 const file_router = require('./files/router');
-var app_events = require('./custom-events/app-events');
-
+const app_events = require('./custom-events/app-events');
 const db = require('./db');
 
-// let server = https.createServer({
-//   key: fs.readFileSync(`${process.argv[3]}/key.pem`),
-//   cert: fs.readFileSync(`${process.argv[3]}/cert.pem`)
-// }, app).listen(3000);
+if(config.protocol == 'https') {
+  const https = require('https');
+  var server = https.createServer({
+    key: fs.readFileSync(`${config.certFolder}/key.pem`),
+    cert: fs.readFileSync(`${config.certFolder}/cert.pem`)
+  }, app).listen(config.port, config.host);
+}
+else {
+  var server = require('http').Server(app);
+  server.listen(config.port, config.host);
+}
 
 const io = require('socket.io')(server);
 

@@ -1,15 +1,14 @@
-# node-mp3scrap
+# Mp3Scrap
 
+Servidor Node.js que escanea carpetas (usando un script python) y sirve los datos a través de una API Restfull.
 
-https://www.last.fm/music/Arbolito/La+mala+reputaci%C3%B3n/+images/f9f3bcdeed5948f4a74d69c4d75ce65b
+## Notas
 
-https://www.last.fm/music/{{ artista }}/{{ album }}
+* Para que funcionen las claves foráneas hay que habilitar PRAGMA en SQLite3.
+* Comando para crear certificado http:
 
-enlace imagen = li.secondary-nav-item--images > a[href]
-imagen = a.gallery-image[0] > img[src]
+`openssl req -nodes -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`
 
+## TODO
 
-PARA QUE FUNCIONEN LAS FOREIGN KEYS EN SQLITE3 HAY Q HABILITAR "PRAGMA"
-
-PARA CREAR CERTIFICADO https
-openssl req -nodes -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
+* Descarga de Album y/o Artista en un archivo comprimido.

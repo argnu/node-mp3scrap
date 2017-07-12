@@ -8,18 +8,19 @@ import datetime
 import requests
 import shutil
 from bs4 import BeautifulSoup
-
+import warnings
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf8')
-
-import warnings
 warnings.filterwarnings('ignore')
 eyed3.log.setLevel("ERROR")
 
-def isMP3(filePath):
-    fileName, fileExt = os.path.splitext(filePath)
+
+def isMP3(file_path):
+    fileName, fileExt = os.path.splitext(file_path)
     return fileExt == '.mp3'or fileExt == '.MP3'
+
 
 def download(url, dest):
     r = requests.get(url, stream=True)
@@ -31,20 +32,21 @@ def download(url, dest):
         except Exception as e:
             print e
 
+
 def downloadArtLastFM(artist, album):
     try:
-        url = 'https://www.last.fm/music/%s/%s' % (artist, album);
+        url = 'https://www.last.fm/music/%s/%s' % (artist, album)
         r = requests.get(url)
         if r.status_code == 200:
             soup = BeautifulSoup(r.text, "html.parser")
-            li_imagen = soup.find('li', { 'class': 'secondary-nav-item--images' });
+            li_imagen = soup.find('li', {'class': 'secondary-nav-item--images'})
             a_imagen = li_imagen.find('a')
-            link_imagen = 'https://www.last.fm%s' % (a_imagen.get('href'));
+            link_imagen = 'https://www.last.fm%s' % (a_imagen.get('href'))
 
             r = requests.get(link_imagen)
             if r.status_code == 200:
                 soup = BeautifulSoup(r.text, "html.parser")
-                a_imagen = soup.find('a', { 'class': 'gallery-image' });
+                a_imagen = soup.find('a', {'class': 'gallery-image'})
                 img_imagen = a_imagen.find('img')
                 url_imagen = img_imagen.get('src')
                 file_dir = os.path.dirname(os.path.realpath('__file__'))
@@ -52,16 +54,15 @@ def downloadArtLastFM(artist, album):
                 file_path = os.path.join(file_dir, 'files/album-art/' + file_name)
                 download(url_imagen, file_path)
                 return True
-    except Exception as e:
+    except Exception:
         return False
 
 
 def scan(db_path, folder_path, search_art):
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor();
+    cursor = conn.cursor()
 
-    #INICIO SUBRUTINAS
-
+    # INICIO SUBRUTINAS
     def saveSong(folder, artist, album, song):
         cursor.execute('SELECT id FROM song WHERE artistId=(?) AND albumId=(?) AND name=(?)', (artist['id'], album, song['name'],))
         check = cursor.fetchone()
@@ -127,14 +128,15 @@ def scan(db_path, folder_path, search_art):
         tag_data = eyed3.core.load(file)
         saved_artist = saveArtist(tag_data.tag.artist)
         album_name = tag_data.tag.album if (tag_data.tag.album is not None) else 'Album Desconocido'
-        album = { 'name': album_name, 'year': int(tag_data.tag.best_release_date.year) if tag_data.tag.best_release_date != None else 0 }
+        album = {'name': album_name, 'year': int(tag_data.tag.best_release_date.year) if tag_data.tag.best_release_date is not None else 0}
         id_album = saveAlbum(saved_artist, album)
         song = {
             'name': unicode(tag_data.tag.title),
             'track': tag_data.tag.track_num[0],
             'uri': unicode(str(file)),
-            'size': os.stat(file).st_size ,
-            'duration': '',
+            'size': tag_data.info.size_bytes,
+            'duration': tag_data.info.time_secs,
+            'license': ''
         }
         saveSong(folder, saved_artist, id_album, song)
         if commit:
@@ -154,11 +156,11 @@ def scan(db_path, folder_path, search_art):
         else:
             return check[0]
 
-    #FIN SUBRUTINAS
+    # FIN SUBRUTINAS
 
-    #PROCESO PRINCIPAL
+    # PROCESO PRINCIPAL
 
-    #GUARDO NUEVA CARPETA Y/O ACTUALIZO LA MISMA
+    # GUARDO NUEVA CARPETA Y/O ACTUALIZO LA MISMA
     id_folder = saveFolder()
     query = """
         UPDATE
@@ -180,7 +182,5 @@ def scan(db_path, folder_path, search_art):
     conn.commit()
     conn.close()
 
-
-import time
 if __name__ == "__main__":
     scan(sys.argv[1], sys.argv[2], sys.argv[3]=='True')

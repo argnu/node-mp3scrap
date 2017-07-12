@@ -1,9 +1,10 @@
 //jshint esversion:6
 
 const Sequelize = require('sequelize');
+const config = require('../config');
 
 var sequelize = new Sequelize('database', 'username', 'password', {
-  host: process.argv[3],
+  host: config.host,
   dialect: 'sqlite',
   pool: {
     max: 5,
